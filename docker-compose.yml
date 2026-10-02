@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: ticket_postgres
     restart: always
     environment:
@@ -16,6 +16,36 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ticket_backend
+    restart: always
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/ticket_booking
+      DB_POOL_MIN: 5
+      DB_POOL_MAX: 30
+      DB_LOCK_TIMEOUT_MS: 2000
+      LOG_LEVEL: info
+    ports:
+      - "4000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ticket_frontend
+    restart: always
+    ports:
+      - "8085:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

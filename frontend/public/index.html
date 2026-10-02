@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paytm Ticket Booking — System Health & Observability</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-badge">Paytm</div>
+        <div class="header-titles">
+          <h1>Seat Reservation at Scale</h1>
+          <p class="subtitle">Deploy & Observe Dashboard · Concurrency & System Health</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-indicator" id="overallStatusBadge">
+          <span class="status-dot pulse"></span>
+          <span id="overallStatusText">CHECKING...</span>
+        </div>
+        <button id="refreshBtn" class="btn primary-btn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+          </svg>
+          Check Probes
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard">
+      <!-- Grid of Health Cards -->
+      <section class="cards-grid">
+        <!-- Card 1: Liveness Probe (/livez) -->
+        <div class="card health-card" id="livenessCard">
+          <div class="card-header">
+            <span class="card-tag">LIVENESS PROBE</span>
+            <span class="badge" id="livenessBadge">--</span>
+          </div>
+          <div class="card-body">
+            <div class="endpoint">GET /livez</div>
+            <div class="metric-value" id="livenessStatus">Checking...</div>
+            <p class="metric-desc">Validates the HTTP web process is alive, responsive, and serving traffic.</p>
+          </div>
+          <div class="card-footer">
+            <span>Latency: <strong id="livenessLatency">--</strong></span>
+            <span id="livenessTime">--</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Readiness Probe (/readyz) -->
+        <div class="card health-card" id="readinessCard">
+          <div class="card-header">
+            <span class="card-tag">READINESS PROBE</span>
+            <span class="badge" id="readinessBadge">--</span>
+          </div>
+          <div class="card-body">
+            <div class="endpoint">GET /readyz</div>
+            <div class="metric-value" id="readinessStatus">Checking...</div>
+            <p class="metric-desc">Deep dependency ping (PostgreSQL <code class="code-pill">SELECT 1</code>). Fails closed if unreachable.</p>
+          </div>
+          <div class="card-footer">
+            <span>DB Latency: <strong id="readinessLatency">--</strong></span>
+            <span id="readinessTime">--</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Database & Engine -->
+        <div class="card health-card" id="dbCard">
+          <div class="card-header">
+            <span class="card-tag">POSTGRESQL 16</span>
+            <span class="badge badge-info" id="dbEngineBadge">ACID ENGINE</span>
+          </div>
+          <div class="card-body">
+            <div class="endpoint">ticket_postgres:5432</div>
+            <div class="metric-value" id="dbConnectionStatus">Checking...</div>
+            <p class="metric-desc">Pessimistic row locking with deterministic sorting and strict zero double-sell guarantees.</p>
+          </div>
+          <div class="card-footer">
+            <span>Lock Timeout: <strong>2000 ms</strong></span>
+            <span>Pool Size: <strong>30 max</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings / Configuration Toolbar -->
+      <section class="config-bar">
+        <div class="config-item">
+          <label for="apiUrlInput">API Base URL:</label>
+          <input type="text" id="apiUrlInput" value="" placeholder="Autodetect (/api or http://localhost:3000)">
+        </div>
+        <div class="config-item auto-refresh-toggle">
+          <label class="switch">
+            <input type="checkbox" id="autoRefreshCheckbox" checked>
+            <span class="slider"></span>
+          </label>
+          <span>Auto-refresh (every 3s)</span>
+        </div>
+      </section>
+
+      <!-- Live Probe Audit Stream -->
+      <section class="card audit-card">
+        <div class="card-header">
+          <h3>Live Health Probe Stream</h3>
+          <span class="text-muted" id="auditCount">0 events logged</span>
+        </div>
+        <div class="table-container">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Endpoint</th>
+                <th>HTTP Status</th>
+                <th>Round-Trip Latency</th>
+                <th>Database Status</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody">
+              <tr>
+                <td colspan="6" class="empty-state">Awaiting first probe response...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Paytm Money Backend Engineering Take-Home · Deploy & Observe Round · <span id="clockDisplay"></span></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
