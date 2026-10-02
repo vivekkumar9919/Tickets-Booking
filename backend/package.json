@@ -1,0 +1,32 @@
+{
+  "name": "seat-reservation-backend",
+  "version": "1.0.0",
+  "description": "High-Concurrency Seat Reservation Service - Paytm Money Assignment",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/infrastructure/database/migrate.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": [
+    "ticket-booking",
+    "concurrency",
+    "seat-reservation",
+    "paytm-money",
+    "postgresql",
+    "winston",
+    "prom-client"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "prom-client": "^15.1.3",
+    "uuid": "^10.0.0",
+    "winston": "^3.15.0"
+  }
+}

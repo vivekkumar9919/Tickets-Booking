@@ -1,9 +1,6 @@
 # Product Requirement Document (PRD)
 ## Project: High-Concurrency Seat Reservation Service
-**Target System:** Backend Engineering Take-Home Exercise (Deploy & Observe) · Paytm Money  
-**Document Version:** 1.0.0  
-**Status:** Approved for Technical Design  
-**Author / Engineering Lead:** Pair Programming Team  
+
 
 ---
 
