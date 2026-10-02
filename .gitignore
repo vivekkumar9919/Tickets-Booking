@@ -44,11 +44,7 @@ Thumbs.db
 ehthumbs.db
 
 # IDE and Editor Files
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 .idea/
 *.suo
 *.ntvs*
