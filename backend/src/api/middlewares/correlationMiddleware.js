@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../infrastructure/logger/Logger.js';
+import metricsCollector from '../../infrastructure/metrics/MetricsCollector.js';
 
 export function correlationMiddleware(req, res, next) {
   const correlationId = req.headers['x-correlation-id'] || uuidv4();
@@ -12,6 +13,7 @@ export function correlationMiddleware(req, res, next) {
 
   res.on('finish', () => {
     const durationMs = Date.now() - startTime;
+    metricsCollector.recordHttpRequest(req.method, req.baseUrl + (req.route?.path || req.path), res.statusCode, durationMs / 1000);
     // Strictly zero customer PII: operational metadata only
     req.logger.info('HTTP Request completed', {
       method: req.method,

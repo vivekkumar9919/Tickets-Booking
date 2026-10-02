@@ -3,6 +3,9 @@ import cors from 'cors';
 import correlationMiddleware from './api/middlewares/correlationMiddleware.js';
 import errorHandler from './api/middlewares/errorHandler.js';
 import healthRoutes from './api/routes/healthRoutes.js';
+import metricRoutes from './api/routes/metricRoutes.js';
+import showRoutes from './api/routes/showRoutes.js';
+import reservationRoutes from './api/routes/reservationRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -11,7 +14,7 @@ export function createApp() {
   app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Correlation-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Idempotency-Key', 'X-Correlation-ID'],
   }));
 
   // Body Parsing
@@ -22,6 +25,13 @@ export function createApp() {
 
   // Health and Readiness Probes
   app.use('/', healthRoutes);
+
+  // Prometheus Observability Metrics
+  app.use('/', metricRoutes);
+
+  // Core API Routes
+  app.use('/shows', showRoutes);
+  app.use('/', reservationRoutes);
 
   // 404 Handler
   app.use((req, res) => {
@@ -39,4 +49,3 @@ export function createApp() {
 }
 
 export default createApp;
-
