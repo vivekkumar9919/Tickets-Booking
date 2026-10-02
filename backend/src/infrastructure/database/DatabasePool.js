@@ -1,11 +1,12 @@
 import pg from 'pg';
 import logger from '../logger/Logger.js';
+import config from '../config.js';
 
 const { Pool } = pg;
 
 export class DatabasePool {
-  constructor(connectionString = process.env.DATABASE_URL) {
-    this.connectionString = connectionString || 'postgres://postgres:postgrespassword@localhost:5432/ticket_booking';
+  constructor(connectionString = config.database.url) {
+    this.connectionString = connectionString;
     this.pool = null;
   }
 
@@ -13,10 +14,10 @@ export class DatabasePool {
     if (!this.pool) {
       this.pool = new Pool({
         connectionString: this.connectionString,
-        min: parseInt(process.env.DB_POOL_MIN || '5', 10),
-        max: parseInt(process.env.DB_POOL_MAX || '30', 10),
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
+        min: config.database.poolMin,
+        max: config.database.poolMax,
+        idleTimeoutMillis: config.database.idleTimeoutMs,
+        connectionTimeoutMillis: config.database.connectionTimeoutMs,
       });
 
       this.pool.on('error', (err) => {

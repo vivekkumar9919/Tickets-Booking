@@ -1,5 +1,6 @@
 import dbPool from './DatabasePool.js';
 import logger from '../logger/Logger.js';
+import config from '../config.js';
 
 /**
  * Design Pattern: Unit of Work & Transaction Manager
@@ -12,7 +13,7 @@ export class UnitOfWork {
     this.inTransaction = false;
   }
 
-  async begin(lockTimeoutMs = parseInt(process.env.DB_LOCK_TIMEOUT_MS || '2000', 10)) {
+  async begin(lockTimeoutMs = config.database.lockTimeoutMs) {
     if (this.inTransaction) {
       throw new Error('Transaction is already active in this UnitOfWork');
     }
