@@ -115,6 +115,9 @@ export class ReservationService {
   }
 
   async _assertUserQuota(showId, userId, requestedCount, limit, client) {
+    // Acquire transaction-scoped advisory lock for (showId, userId) to serialize quota evaluation
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))', [showId, userId]);
+
     const activeCount = await this.resRepo.countActiveSeatsByUser(showId, userId, client);
     if (activeCount + requestedCount > limit) {
       throw new UserLimitExceededError(activeCount, requestedCount, limit);
