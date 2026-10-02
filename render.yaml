@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: ticket-reservation-backend
+    runtime: node
+    plan: standard
+    buildCommand: npm --prefix backend ci
+    startCommand: npm --prefix backend start
+    healthCheckPath: /readyz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ticket-booking-db
+          property: connectionString
+      - key: DB_POOL_MIN
+        value: 5
+      - key: DB_POOL_MAX
+        value: 30
+      - key: DB_LOCK_TIMEOUT_MS
+        value: 2000
+
+databases:
+  - name: ticket-booking-db
+    databaseName: ticket_booking
+    user: postgres
+    plan: standard
