@@ -32,7 +32,16 @@ Production-grade, high-concurrency Seat Reservation Service built for the Paytm 
 
 ---
 
-## 2. Architecture & Design Patterns
+## 2. Live Deployments & URLs
+
+| Environment | Base URL | Health Probe (`/readyz`) | Observability (`/metrics`) |
+| :--- | :--- | :--- | :--- |
+| **Render (Public Cloud)** | `https://ticket-reservation-backend-bc2y.onrender.com` | [`/readyz`](https://ticket-reservation-backend-bc2y.onrender.com/readyz) | [`/metrics`](https://ticket-reservation-backend-bc2y.onrender.com/metrics) |
+| **Local Docker** | `http://localhost:4000` | `http://localhost:4000/readyz` | `http://localhost:4000/metrics` |
+
+---
+
+## 3. Architecture & Repository Layout
 
 ```
 ticketBooking/
@@ -40,14 +49,14 @@ ticketBooking/
 ├── docker-compose.yml                     # Multi-service container orchestration
 ├── render.yaml                            # Cloud deployment blueprint (Render)
 ├── railway.json                           # Cloud deployment configuration (Railway)
-├── SETUP.md                               # Complete step-by-step setup and cURL API guide
-├── WRITEUP.md                             # Technical write-up for the 6 mandatory questions
+├── SETUP.md                               # [SSOT] Complete setup, deployment & cURL API guide
+├── WRITEUP.md                             # [SSOT] Technical write-up for 6 mandatory questions
 └── backend/
     ├── Dockerfile                         # Multi-stage production build (non-root)
     ├── migrations/                        # PostgreSQL DDL migrations
     │   └── 001_initial_schema.sql
     ├── src/
-    │   ├── domain/                        # Pure OOP Entities & Value Objects (Money, Seat, Show, etc.)
+    │   ├── domain/                        # Pure OOP Entities & Value Objects (Money, Seat, Show)
     │   ├── repositories/                  # Repository Pattern (ShowRepo, SeatRepo, ReservationRepo)
     │   ├── infrastructure/                # UnitOfWork, DB Pool, Logger, MetricsCollector
     │   ├── services/                      # Application Business Logic (ReservationService, HoldSweeper)
@@ -58,119 +67,22 @@ ticketBooking/
 
 ---
 
-## 3. Deployments & Live Service URLs
+## 4. Documentation Index (Single Source of Truth)
 
-| Environment | Base URL | Health Probe (`/readyz`) | Metrics (`/metrics`) |
-| :--- | :--- | :--- | :--- |
-| **Render (Public Cloud)** | `https://ticket-reservation-backend-bc2y.onrender.com` | [`/readyz`](https://ticket-reservation-backend-bc2y.onrender.com/readyz) | [`/metrics`](https://ticket-reservation-backend-bc2y.onrender.com/metrics) |
-| **Local Docker** | `http://localhost:4000` | `http://localhost:4000/readyz` | `http://localhost:4000/metrics` |
+To maintain clarity and eliminate documentation duplication, comprehensive guides are maintained in dedicated reference documents:
 
-### 3.1 Start Local Docker Services
+* 📖 **[SETUP.md](./SETUP.md) — Complete Setup, Deployment & API Reference:**
+  - Docker Compose & local native Node.js setup
+  - Cloud deployment step-by-step (Render & Railway)
+  - Automated test suite execution (`npm test`)
+  - Running the high-concurrency burst load runner (`./burst.sh`)
+  - Full cURL commands with request/response payloads for every API endpoint
+  - Environment variables reference
 
-Clone the repository and run:
-
-```bash
-docker compose up -d --build
-```
-
-This launches the containerized services:
-- **`ticket_postgres`**: PostgreSQL 15 on port `5432` with healthcheck (`pg_isready`).
-- **`ticket_backend`**: Node.js Express service on host port `4000` (container port `3000`).
-
-### 3.2 Verify Service Health
-
-```bash
-# Against Live Cloud (Render):
-curl -s https://ticket-reservation-backend-bc2y.onrender.com/readyz
-# {"status":"ready","database":"connected","latency_ms":1,"timestamp":"..."}
-
-# Against Local Docker:
-curl -s http://localhost:4000/readyz
-# {"status":"ready","database":"connected","latency_ms":1,"timestamp":"..."}
-```
-
----
-
-## 4. Running the Concurrency Burst Runner (`burst.sh`)
-
-**Execution Path:** Run from the project root directory (`ticketBooking/` or `Tickets-Booking/`):
-
-```bash
-cd /path/to/ticketBooking
-chmod +x burst.sh
-
-# Option A: Run against Live Render Cloud (Public Production Deployment)
-./burst.sh https://ticket-reservation-backend-bc2y.onrender.com
-
-# Option B: Run against Local Docker Deployment
-./burst.sh http://localhost:4000
-
-# Custom storm count (e.g. 500, 1000 contenders):
-./burst.sh https://ticket-reservation-backend-bc2y.onrender.com 500
-./burst.sh http://localhost:4000 500
-```
-
-### What `burst.sh` Executes:
-1. **Health Verification:** Confirms `/livez` and `/readyz` report healthy.
-2. **Show Creation:** Creates a show with 50 seats and limit = 4 seats/user.
-3. **Hot-Seat Storm:** Fires **500 concurrent requests competing for the exact same seat (`S12`)**. Asserts exactly 1 winner, 499 clean `409` declines, and zero `500` errors.
-4. **Quota Boundary Test:** Fires **10 parallel requests by 1 user (limit = 4)**. Asserts exactly 4 succeed and 6 receive clean `409` limit declines.
-5. **Idempotency Replay Test:** Fires **50 parallel identical requests** with the same key. Asserts all receive `201` with identical booking IDs.
-6. **Reconciliation Audit:** Verifies the formula $\text{available} + \text{held} + \text{confirmed} \equiv \text{total\_seats}$.
-
----
-
-## 5. Running the Automated Test Suites
-
-The backend includes 29 automated test cases covering migrations, domain models, repositories, concurrency services, deadlocks, and API endpoints:
-
-```bash
-cd backend
-npm test
-```
-
-### Test Suite Breakdown:
-- **Phase 1:** PostgreSQL connectivity, initial schema, table existence, and UnitOfWork rollback cleanliness.
-- **Phase 2:** `Money` float rejection, domain state machines, and repository CRUD within transactional boundaries.
-- **Phase 3:** Concurrency engine, hot-seat storm (20 contenders), reverse-order deadlock avoidance, cancellation ownership, and background hold sweeper.
-- **Phase 4:** REST endpoints, Bearer authentication, body spoofing prevention (`400`), idempotency replay caching, and Prometheus metric emission.
-
----
-
-## 6. API Reference
-
-### Probes & Observability
-- `GET /livez`: Fast non-blocking process liveness probe (`200 OK`).
-- `GET /readyz`: Deep PostgreSQL dependency ping (`SELECT 1`). Fails closed (`503`) if database is down.
-- `GET /metrics`: Native Prometheus scrapable format exposing seat status gauges and reservation counters.
-
-### Core Inventory & Reservation Endpoints
-- `POST /shows`: Create show with atomic seat inventory.
-  ```json
-  {
-    "name": "Coldplay Ahmedabad 2026",
-    "total_seats": 50,
-    "price_paise": 500000,
-    "per_user_limit": 4
-  }
-  ```
-- `GET /shows/:id`: Retrieve show details and real-time seat breakdown with reconciliation verification.
-- `POST /shows/:id/reserve`: Reserve seats with deterministic locking and idempotency.
-  - **Headers:** `Authorization: Bearer <user_id>`, `Idempotency-Key: <unique_key>`
-  - **Body:** `{"seats": ["S1", "S2"]}`
-- `POST /reservations/:id/cancel`: Cancel an active reservation and release seats back to `available`.
-  - **Headers:** `Authorization: Bearer <user_id>` (enforces owner-only cancellation).
-
----
-
-## 7. Technical Write-Up
-
-For deep architectural explanations addressing the 6 mandatory questions:
-- Exact SQL row-level locking clause and why it is race-free
-- Mathematical deadlock avoidance via total ordering
-- Idempotency lifecycle and crash recovery
-- Consistency vs. Availability trade-offs (CP vs AP)
-- Production observability and 2 AM PagerDuty alerting rules
-- Honest AI usage disclosure (directed vs decided)
-
-👉 Please see **[`WRITEUP.md`](./WRITEUP.md)**.
+* 📝 **[WRITEUP.md](./WRITEUP.md) — Technical Architecture Deep-Dive:**
+  - Exact SQL row-level locking clause and race-free verification
+  - Mathematical total-ordering deadlock elimination proof
+  - Cryptographic idempotency engine & crash recovery semantics
+  - CAP theorem trade-offs: Consistency ($C$) vs. Availability ($A$)
+  - Production observability, metrics dashboard, and 2 AM PagerDuty alerting rules
+  - Transparent AI tool usage disclosure (directed vs. decided)
