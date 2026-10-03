@@ -12,13 +12,20 @@ export class DatabasePool {
 
   connect() {
     if (!this.pool) {
-      this.pool = new Pool({
+      const isLocalhost = this.connectionString && (this.connectionString.includes('localhost') || this.connectionString.includes('127.0.0.1'));
+      const poolConfig = {
         connectionString: this.connectionString,
         min: config.database.poolMin,
         max: config.database.poolMax,
         idleTimeoutMillis: config.database.idleTimeoutMs,
         connectionTimeoutMillis: config.database.connectionTimeoutMs,
-      });
+      };
+
+      if (!isLocalhost && (process.env.NODE_ENV === 'production' || process.env.DB_SSL === 'true' || (this.connectionString && this.connectionString.includes('sslmode')))) {
+        poolConfig.ssl = { rejectUnauthorized: false };
+      }
+
+      this.pool = new Pool(poolConfig);
 
       this.pool.on('error', (err) => {
         logger.error('Unexpected error on idle PostgreSQL client', { error: err.message, stack: err.stack });

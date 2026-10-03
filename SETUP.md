@@ -109,6 +109,35 @@ The repository includes ready-to-deploy configuration manifests:
    - `PORT`: `3000`
 5. Railway detects [`railway.json`](./railway.json), boots the container, applies migrations on startup, verifies `/readyz`, and provisions a public HTTPS domain.
 
+#### Deploy to Render (Blueprint / Manual):
+
+**Method 1: Render Blueprint (One-Click via `render.yaml`)**
+1. Push your repository to GitHub.
+2. Log in to [dashboard.render.com](https://dashboard.render.com).
+3. Click **New +** $\rightarrow$ **Blueprint**.
+4. Connect your GitHub repository.
+5. Render reads [`render.yaml`](./render.yaml), automatically provisions a **PostgreSQL database** and a **Web Service**, links their `DATABASE_URL`, and deploys both.
+
+**Method 2: Manual Dashboard Setup**
+1. **Create PostgreSQL Database:**
+   - In Render Dashboard, click **New +** $\rightarrow$ **PostgreSQL**.
+   - Name: `ticket-booking-db`, Database: `ticket_booking`.
+   - Copy the **Internal Database URL** (or External URL if connecting externally).
+2. **Create Web Service:**
+   - Click **New +** $\rightarrow$ **Web Service** $\rightarrow$ connect repository.
+   - **Environment:** `Node` (or `Docker` using the root Dockerfile).
+   - **Build Command:** `npm --prefix backend ci`
+   - **Start Command:** `npm --prefix backend start`
+   - **Health Check Path:** `/readyz`
+   - **Environment Variables:**
+     - `DATABASE_URL`: *(paste the PostgreSQL connection string from step 1)*
+     - `NODE_ENV`: `production`
+     - `PORT`: `3000` (Render also automatically injects its port)
+     - `DB_POOL_MIN`: `5`
+     - `DB_POOL_MAX`: `30`
+     - `DB_LOCK_TIMEOUT_MS`: `2000`
+3. Click **Create Web Service**. On deployment, Render runs migrations automatically, verifies `/readyz`, and provides your public URL (e.g., `https://ticket-reservation-backend.onrender.com`).
+
 ---
 
 ## 3. Running Automated Tests

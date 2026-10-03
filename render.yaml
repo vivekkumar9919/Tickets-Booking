@@ -2,7 +2,7 @@ services:
   - type: web
     name: ticket-reservation-backend
     runtime: node
-    plan: standard
+    plan: free
     buildCommand: npm --prefix backend ci
     startCommand: npm --prefix backend start
     healthCheckPath: /readyz
@@ -26,4 +26,4 @@ databases:
   - name: ticket-booking-db
     databaseName: ticket_booking
     user: postgres
-    plan: standard
+    plan: free
