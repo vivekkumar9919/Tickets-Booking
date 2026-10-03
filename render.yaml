@@ -3,6 +3,7 @@ services:
     name: ticket-reservation-backend
     runtime: node
     plan: free
+    autoDeploy: true
     buildCommand: npm --prefix backend ci
     startCommand: npm --prefix backend start
     healthCheckPath: /readyz
