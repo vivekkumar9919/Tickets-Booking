@@ -161,12 +161,21 @@ npm test
 
 Test the system against high-concurrency race conditions (hot-seat storm with 500 parallel contenders, user quota limits, and idempotency replays):
 
+**Execution Path:** Run from the repository root directory (`ticketBooking/` or `Tickets-Booking/`):
+
 ```bash
-# Against local Docker deployment:
+cd /path/to/ticketBooking
+chmod +x burst.sh
+
+# Option A: Against Live Render Cloud (Public Production URL)
+./burst.sh https://ticket-reservation-backend-bc2y.onrender.com
+
+# Option B: Against Local Docker Deployment
 ./burst.sh http://localhost:4000
 
-# Or against your live cloud deployment:
-./burst.sh https://your-app.up.railway.app
+# Optional custom storm count (e.g. 500 or 1,000 contenders):
+./burst.sh https://ticket-reservation-backend-bc2y.onrender.com 500
+./burst.sh http://localhost:4000 500
 ```
 
 ### What `burst.sh` Validates:
@@ -182,8 +191,13 @@ Test the system against high-concurrency race conditions (hot-seat storm with 50
 ## 5. Complete API Reference & cURL Commands
 
 Set your base URL variable:
+
 ```bash
-BASE_URL="http://localhost:4000"
+# Target Live Render Production URL:
+BASE_URL="https://ticket-reservation-backend-bc2y.onrender.com"
+
+# OR Target Local Docker URL:
+# BASE_URL="http://localhost:4000"
 ```
 
 ---

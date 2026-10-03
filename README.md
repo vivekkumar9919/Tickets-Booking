@@ -40,30 +40,32 @@ ticketBooking/
 ├── docker-compose.yml                     # Multi-service container orchestration
 ├── render.yaml                            # Cloud deployment blueprint (Render)
 ├── railway.json                           # Cloud deployment configuration (Railway)
+├── SETUP.md                               # Complete step-by-step setup and cURL API guide
 ├── WRITEUP.md                             # Technical write-up for the 6 mandatory questions
-├── backend/
-│   ├── Dockerfile                         # Multi-stage production build (non-root)
-│   ├── migrations/                        # PostgreSQL DDL migrations
-│   │   └── 001_initial_schema.sql
-│   ├── src/
-│   │   ├── domain/                        # Pure OOP Entities & Value Objects (Money, Seat, Show, etc.)
-│   │   ├── repositories/                  # Repository Pattern (ShowRepo, SeatRepo, ReservationRepo)
-│   │   ├── infrastructure/                # UnitOfWork, DB Pool, Logger, MetricsCollector
-│   │   ├── services/                      # Application Business Logic (ReservationService, HoldSweeper)
-│   │   ├── api/                           # Middlewares, Controllers, Routes
-│   │   └── server.js                      # Application entry point with boot migrations & sweeper
-│   └── tests/                             # Automated test suites across all phases
-└── frontend/
-    ├── Dockerfile                         # Nginx Alpine reverse-proxy
-    ├── nginx.conf                         # Reverse proxy config (/api -> backend:3000)
-    └── public/                            # Live Observability Dashboard (HTML, CSS, JS)
+└── backend/
+    ├── Dockerfile                         # Multi-stage production build (non-root)
+    ├── migrations/                        # PostgreSQL DDL migrations
+    │   └── 001_initial_schema.sql
+    ├── src/
+    │   ├── domain/                        # Pure OOP Entities & Value Objects (Money, Seat, Show, etc.)
+    │   ├── repositories/                  # Repository Pattern (ShowRepo, SeatRepo, ReservationRepo)
+    │   ├── infrastructure/                # UnitOfWork, DB Pool, Logger, MetricsCollector
+    │   ├── services/                      # Application Business Logic (ReservationService, HoldSweeper)
+    │   ├── api/                           # Middlewares, Controllers, Routes
+    │   └── server.js                      # Application entry point with boot migrations & sweeper
+    └── tests/                             # Automated test suites across all phases
 ```
 
 ---
 
-## 3. Quickstart (Local Docker Compose)
+## 3. Deployments & Live Service URLs
 
-### 3.1 Start Services
+| Environment | Base URL | Health Probe (`/readyz`) | Metrics (`/metrics`) |
+| :--- | :--- | :--- | :--- |
+| **Render (Public Cloud)** | `https://ticket-reservation-backend-bc2y.onrender.com` | [`/readyz`](https://ticket-reservation-backend-bc2y.onrender.com/readyz) | [`/metrics`](https://ticket-reservation-backend-bc2y.onrender.com/metrics) |
+| **Local Docker** | `http://localhost:4000` | `http://localhost:4000/readyz` | `http://localhost:4000/metrics` |
+
+### 3.1 Start Local Docker Services
 
 Clone the repository and run:
 
@@ -78,26 +80,34 @@ This launches the containerized services:
 ### 3.2 Verify Service Health
 
 ```bash
-# Liveness Probe (Checks process responsiveness)
-curl -s http://localhost:4000/livez
-# {"status":"alive","timestamp":"2026-10-03T06:39:27.708Z"}
+# Against Live Cloud (Render):
+curl -s https://ticket-reservation-backend-bc2y.onrender.com/readyz
+# {"status":"ready","database":"connected","latency_ms":1,"timestamp":"..."}
 
-# Readiness Probe (Deep DB ping SELECT 1; fails closed if DB unreachable)
+# Against Local Docker:
 curl -s http://localhost:4000/readyz
-# {"status":"ready","database":"connected","latency_ms":1,"timestamp":"2026-10-03T06:39:27.810Z"}
-
-# Prometheus Metrics
-curl -s http://localhost:4000/metrics
+# {"status":"ready","database":"connected","latency_ms":1,"timestamp":"..."}
 ```
 
 ---
 
 ## 4. Running the Concurrency Burst Runner (`burst.sh`)
 
-Execute the automated burst load runner against the running service:
+**Execution Path:** Run from the project root directory (`ticketBooking/` or `Tickets-Booking/`):
 
 ```bash
+cd /path/to/ticketBooking
+chmod +x burst.sh
+
+# Option A: Run against Live Render Cloud (Public Production Deployment)
+./burst.sh https://ticket-reservation-backend-bc2y.onrender.com
+
+# Option B: Run against Local Docker Deployment
 ./burst.sh http://localhost:4000
+
+# Custom storm count (e.g. 500, 1000 contenders):
+./burst.sh https://ticket-reservation-backend-bc2y.onrender.com 500
+./burst.sh http://localhost:4000 500
 ```
 
 ### What `burst.sh` Executes:

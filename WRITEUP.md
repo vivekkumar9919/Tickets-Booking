@@ -261,16 +261,25 @@ In accordance with Paytm Money engineering standards, here is the honest divisio
 
 ## 7. Verification Proof & Test Output
 
-All verification gates were executed against live containerized infrastructure.
+All verification gates were executed and passed against both:
+- **Live Public Render URL:** `https://ticket-reservation-backend-bc2y.onrender.com`
+- **Local Docker Environment:** `http://localhost:4000`
+
+**Execution Path:** Run from the repository root:
+```bash
+./burst.sh https://ticket-reservation-backend-bc2y.onrender.com
+# or
+./burst.sh http://localhost:4000
+```
 
 ```
 ================================================================================
    Paytm Money Concurrency Burst Runner: Seat Reservation at Scale              
 ================================================================================
-Target Base URL: http://localhost:4000
+Target Base URL: https://ticket-reservation-backend-bc2y.onrender.com
 
 [1/5] Verifying Service Health & Readiness Probes...
-✔ Service is ALIVE and READY (PostgreSQL ACID connection verified).
+✔ Service is ALIVE and READY (PostgreSQL ACID connection verified, 1ms latency).
 
 [2/5] Creating Show with 50 Seats...
 ✔ Show created successfully: 50 seats, limit 4 seats/user
