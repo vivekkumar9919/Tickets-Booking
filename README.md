@@ -14,8 +14,7 @@ Production-grade, high-concurrency Seat Reservation Service built for the Paytm 
 1. **Zero Double-Sell:**  
    Under a 500-request storm competing for the exact same seat, **exactly 1 request wins (`201 Created`)**, while the other 499 receive clean domain declines (`409 Conflict`). **Zero 500 Internal Server Errors**.
 2. **Strict Reconciliation Invariant:**  
-   At all times:
-   $$\text{available} + \text{held} + \text{confirmed} \equiv \text{total\_seats}$$
+   At all times: `available + held + confirmed == total_seats`
 3. **Deterministic Deadlock Elimination:**  
    Multi-seat lock requests are naturally sorted (`ORDER BY seat_number ASC`) prior to lock acquisition, eliminating Coffman cyclic-wait deadlocks.
 4. **Per-User Quota Serialization:**  
@@ -49,8 +48,8 @@ ticketBooking/
 ├── docker-compose.yml                     # Multi-service container orchestration
 ├── render.yaml                            # Cloud deployment blueprint (Render)
 ├── railway.json                           # Cloud deployment configuration (Railway)
-├── SETUP.md                               # [SSOT] Complete setup, deployment & cURL API guide
-├── WRITEUP.md                             # [SSOT] Technical write-up for 6 mandatory questions
+├── SETUP.md                               # Complete setup, deployment & cURL API guide
+├── WRITEUP.md                             # Technical write-up for 6 mandatory questions
 └── backend/
     ├── Dockerfile                         # Multi-stage production build (non-root)
     ├── migrations/                        # PostgreSQL DDL migrations
@@ -67,9 +66,9 @@ ticketBooking/
 
 ---
 
-## 4. Documentation Index (Single Source of Truth)
+## 4. Documentation Index
 
-To maintain clarity and eliminate documentation duplication, comprehensive guides are maintained in dedicated reference documents:
+Detailed setup instructions, API specs, and technical architecture are documented in:
 
 * 📖 **[SETUP.md](./SETUP.md) — Complete Setup, Deployment & API Reference:**
   - Docker Compose & local native Node.js setup

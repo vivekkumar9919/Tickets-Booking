@@ -184,7 +184,7 @@ chmod +x burst.sh
 3. **Hot-Seat Storm:** Fires **500 concurrent requests competing for the exact same seat (`S12`)**. Asserts **exactly 1 winner (`201`)**, **499 clean declines (`409`)**, and **0 server errors (`500`)**.
 4. **Quota Boundary:** 1 user fires 10 parallel requests. Asserts **exactly 4 allowed** and **6 declines**.
 5. **Idempotency Replay:** Fires 50 parallel requests with an identical idempotency key. Asserts all receive `201` with the same booking ID and zero duplicate seats.
-6. **Reconciliation Audit:** Verifies $\text{available} + \text{held} + \text{confirmed} \equiv \text{total\_seats}$.
+6. **Reconciliation Audit:** Verifies `available + held + confirmed == total_seats`.
 
 ---
 
