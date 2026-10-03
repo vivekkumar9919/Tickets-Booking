@@ -14,11 +14,15 @@ export class ShowService {
     this.seatRepo = new SeatRepository(pool);
   }
 
-  async createShow({ name, totalSeats, pricePaise, perUserLimit = 4, correlationId = null }) {
+  async createShow({ name, totalSeats, seatNumbers = null, pricePaise, perUserLimit = 4, correlationId = null }) {
     if (!name || typeof name !== 'string' || !name.trim()) {
       throw new DomainError('Show name is required', 'INVALID_SHOW_NAME', 400);
     }
-    if (!Number.isInteger(totalSeats) || totalSeats <= 0) {
+
+    const customSeats = Array.isArray(seatNumbers) && seatNumbers.length > 0 ? seatNumbers : null;
+    const effectiveTotal = customSeats ? customSeats.length : Number(totalSeats);
+
+    if (!Number.isInteger(effectiveTotal) || effectiveTotal <= 0) {
       throw new DomainError('Total seats must be a positive integer', 'INVALID_SEAT_COUNT', 400);
     }
 
@@ -29,22 +33,28 @@ export class ShowService {
       const client = unit.getClient();
       const showEntity = new Show({
         name: name.trim(),
-        totalSeats,
+        totalSeats: effectiveTotal,
         pricePaise: money.paise,
         perUserLimit,
       });
 
       const show = await this.showRepo.create(showEntity, client);
-      const seatNumbers = Array.from({ length: totalSeats }, (_, i) => `S${i + 1}`);
-      await this.seatRepo.createBatch(show.id, seatNumbers, client);
+      const seatsToInsert = customSeats
+        ? customSeats.map((s) => String(s).trim().toUpperCase())
+        : Array.from({ length: effectiveTotal }, (_, i) => `S${i + 1}`);
+
+      const createdSeats = await this.seatRepo.createBatch(show.id, seatsToInsert, client);
 
       logger.info('Show inventory created successfully', {
         correlation_id: correlationId,
         show_id: show.id,
-        total_seats: totalSeats,
+        total_seats: effectiveTotal,
       });
 
-      return show;
+      return {
+        ...show.toJSON(),
+        seats: createdSeats.map((s) => ({ seat_number: s.seatNumber, status: s.status })),
+      };
     });
   }
 

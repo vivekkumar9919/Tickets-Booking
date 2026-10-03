@@ -52,6 +52,14 @@ The transaction operates under **`READ COMMITTED`** with explicit row locking (`
 - **Why Not `SERIALIZABLE`?** `SERIALIZABLE` relies on SSI (Serializable Snapshot Isolation) predicate locks. High-concurrency writes to contiguous seat rows trigger widespread false-positive serialization failures (SQLSTATE `40001`), requiring extensive transaction retry loops.
 - **Why `READ COMMITTED` + `FOR UPDATE` is Optimal:** It combines the low overhead of `READ COMMITTED` with the strict linearizability of pessimistic row locks.
 
+### 1.5 Partial Requests Policy: All-or-Nothing Atomic Semantics
+
+When a buyer requests multiple seats (e.g. `["A12", "A13"]`):
+- **Design Decision: All-or-Nothing Semantics (Strict Consistency):**  
+  In ticketing (especially assigned seating in cinema halls and concerts), users select specific adjacent seats to sit together. A "best-effort" model that books only `A12` when `A13` is unavailable leaves the customer stranded with an isolated seat, forcing complex refund/cancellation flows and stranding inventory.
+- **Concurrency Enforcement:**  
+  Row locks are acquired for all requested seats in natural sorted order (`ORDER BY seat_number ASC`). The service asserts that *every* requested seat exists and is available. If even one seat is already `held` or `confirmed`, the transaction is declined with a clean domain exception (`409 Conflict: SEAT_UNAVAILABLE`) and rolls back completely via `UnitOfWork`. Zero seats are mutated.
+
 ---
 
 ## 2. Deterministic Deadlock Avoidance

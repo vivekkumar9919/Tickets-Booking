@@ -217,8 +217,20 @@ ticket_seats_status{show_id="e2ed5a28-bf4c-48d4-b833-b40330404db8",status="confi
 ### 5.2 Show Management
 
 #### Create a Show
-Creates a show and its seat inventory atomically.
+Creates a show and its seat inventory atomically. Supports both explicit seat labels (e.g. `["A1", "A2", "A3"]`) and total seat counts:
+
 ```bash
+# Format A: Explicit seat labels (as in Paytm assignment spec)
+curl -X POST "${BASE_URL}/shows" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "friday-night",
+    "seats": ["A1", "A2", "A3", "A4", "A12", "A13"],
+    "price_paise": 25000,
+    "per_user_limit": 4
+  }'
+
+# Format B: Auto-numbered total seat count (S1 to S50)
 curl -X POST "${BASE_URL}/shows" \
   -H "Content-Type: application/json" \
   -d '{
@@ -232,12 +244,15 @@ curl -X POST "${BASE_URL}/shows" \
 ```json
 {
   "id": "e2ed5a28-bf4c-48d4-b833-b40330404db8",
-  "name": "Paytm Live Concert 2026",
-  "total_seats": 50,
-  "price_paise": 250000,
+  "name": "friday-night",
+  "total_seats": 6,
+  "price_paise": 25000,
   "per_user_limit": 4,
   "status": "active",
-  "created_at": "2026-10-03T06:39:28.110Z"
+  "seats": [
+    { "seat_number": "A1", "status": "available" },
+    { "seat_number": "A2", "status": "available" }
+  ]
 }
 ```
 

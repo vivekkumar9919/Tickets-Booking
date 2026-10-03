@@ -20,7 +20,11 @@ export class ReservationController {
         throw new DomainError('seats array with at least one seat number is required', 'INVALID_SEATS', 400);
       }
 
-      const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || null;
+      const idempotencyKey =
+        req.headers['idempotency-key'] ||
+        req.headers['x-idempotency-key'] ||
+        req.body?.idempotency_key ||
+        null;
       const userId = req.user.userId;
 
       const result = await this.resService.reserveSeats({
