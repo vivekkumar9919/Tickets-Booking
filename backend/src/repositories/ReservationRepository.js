@@ -134,6 +134,43 @@ export class ReservationRepository {
       throw err;
     }
   }
+
+  async confirmHeldReservation(id, client = null) {
+    const executor = client || this.pool;
+    const query = `
+      UPDATE reservations
+      SET status = 'confirmed', updated_at = NOW()
+      WHERE id = $1 AND (status = 'pending' OR status = 'held')
+      RETURNING id, show_id, user_id, amount_paise, status;
+    `;
+
+    try {
+      const res = await executor.query(query, [id]);
+      if (res.rows.length === 0) return null;
+      return res.rows[0];
+    } catch (err) {
+      logger.error('ReservationRepository.confirmHeldReservation failed', { reservation_id: id, error: err.message, code: err.code });
+      throw err;
+    }
+  }
+
+  async cancelExpiredHolds(client = null) {
+    const executor = client || this.pool;
+    const query = `
+      UPDATE reservations
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE status = 'held' AND hold_expires_at <= NOW()
+      RETURNING id, show_id, user_id;
+    `;
+
+    try {
+      const res = await executor.query(query);
+      return res.rows;
+    } catch (err) {
+      logger.error('ReservationRepository.cancelExpiredHolds failed', { error: err.message, code: err.code });
+      throw err;
+    }
+  }
 }
 
 export const reservationRepository = new ReservationRepository();

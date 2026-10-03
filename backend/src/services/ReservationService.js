@@ -158,6 +158,109 @@ export class ReservationService {
     }
     throw err;
   }
+
+  async holdSeats({ showId, seatNumbers, userId, holdDurationSeconds = 30, correlationId = null }) {
+    this._validateReserveInput({ showId, seatNumbers, userId });
+    const sortedSeats = [...seatNumbers].sort();
+
+    const uow = new UnitOfWork(this.pool);
+    try {
+      return await uow.execute(async (unit) => {
+        const client = unit.getClient();
+        const show = await this.showRepo.findById(showId, client);
+        if (!show) throw new ShowNotFoundError(showId);
+
+        await this._assertUserQuota(showId, userId, sortedSeats.length, show.perUserLimit, client);
+        const lockedSeats = await this.seatRepo.findSeatsForUpdate(showId, sortedSeats, client);
+        this._assertSeatsAvailable(lockedSeats, sortedSeats);
+
+        const totalAmount = show.calculateTotalAmount(sortedSeats.length);
+        const holdExpiresAt = new Date(Date.now() + holdDurationSeconds * 1000);
+
+        const reservationEntity = new Reservation({
+          showId,
+          userId,
+          amountPaise: totalAmount,
+          seats: sortedSeats,
+          status: 'held',
+        });
+        reservationEntity.holdExpiresAt = holdExpiresAt;
+
+        const createdReservation = await this.resRepo.create(reservationEntity, lockedSeats, client);
+        await this.seatRepo.updateSeatsStatus(showId, sortedSeats, 'held', createdReservation.id, holdExpiresAt, userId, client);
+
+        logger.info('Seats placed on temporary hold', {
+          correlation_id: correlationId,
+          reservation_id: createdReservation.id,
+          show_id: showId,
+          user_id: userId,
+          seats: sortedSeats,
+          hold_duration_seconds: holdDurationSeconds,
+        });
+
+        return {
+          reservation_id: createdReservation.id,
+          show_id: showId,
+          user_id: userId,
+          seats: sortedSeats,
+          amount_paise: createdReservation.amount.paise,
+          status: 'held',
+          hold_expires_at: holdExpiresAt.toISOString(),
+          expires_in_seconds: holdDurationSeconds,
+        };
+      });
+    } catch (err) {
+      this._handleDatabaseError(err, correlationId);
+    }
+  }
+
+  async confirmHeldReservation({ reservationId, userId, correlationId = null }) {
+    if (!reservationId || !userId) {
+      throw new DomainError('reservationId and userId are required', 'INVALID_INPUT', 400);
+    }
+
+    const uow = new UnitOfWork(this.pool);
+    try {
+      return await uow.execute(async (unit) => {
+        const client = unit.getClient();
+        const reservation = await this.resRepo.findById(reservationId, client);
+        if (!reservation) throw new DomainError('Reservation not found', 'RESERVATION_NOT_FOUND', 404);
+        if (!reservation.isOwnedBy(userId)) throw new DomainError('Unauthorized', 'FORBIDDEN', 403);
+
+        if (reservation.isConfirmed()) {
+          return reservation.toJSON();
+        }
+
+        // Check if hold expired
+        const lockedSeats = await this.seatRepo.findSeatsForUpdate(reservation.showId, reservation.seats, client);
+        const expired = lockedSeats.some((s) => s.status !== 'held' || (s.lockedUntil && new Date(s.lockedUntil) < new Date()));
+        if (expired) {
+          throw new DomainError('Seat hold has expired. Please select seats again.', 'HOLD_EXPIRED', 409);
+        }
+
+        await this.resRepo.confirmHeldReservation(reservationId, client);
+        await this.seatRepo.updateSeatsStatus(reservation.showId, reservation.seats, 'confirmed', reservationId, null, userId, client);
+
+        logger.info('Held reservation successfully confirmed following payment', {
+          correlation_id: correlationId,
+          reservation_id: reservationId,
+          user_id: userId,
+          seats: reservation.seats,
+        });
+
+        return {
+          reservation_id: reservationId,
+          show_id: reservation.showId,
+          user_id: userId,
+          seats: reservation.seats,
+          amount_paise: reservation.amount.paise,
+          status: 'confirmed',
+        };
+      });
+    } catch (err) {
+      this._handleDatabaseError(err, correlationId);
+    }
+  }
 }
 
 export const reservationService = new ReservationService();

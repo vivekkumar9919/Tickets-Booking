@@ -22,7 +22,11 @@ export class Seat {
   }
 
   isAvailable() {
-    return this.status === SeatStatus.AVAILABLE;
+    if (this.status === SeatStatus.AVAILABLE) return true;
+    if (this.status === SeatStatus.HELD && this.lockedUntil && new Date(this.lockedUntil) <= new Date()) {
+      return true;
+    }
+    return false;
   }
 
   isHeld() {

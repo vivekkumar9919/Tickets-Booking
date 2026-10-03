@@ -2,6 +2,7 @@ import { Money } from './Money.js';
 
 export const ReservationStatus = Object.freeze({
   PENDING: 'pending',
+  HELD: 'held',
   CONFIRMED: 'confirmed',
   CANCELLED: 'cancelled'
 });
@@ -26,6 +27,10 @@ export class Reservation {
 
   isConfirmed() {
     return this.status === ReservationStatus.CONFIRMED;
+  }
+
+  isHeld() {
+    return this.status === ReservationStatus.HELD;
   }
 
   isCancelled() {

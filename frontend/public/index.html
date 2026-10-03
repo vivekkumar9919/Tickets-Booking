@@ -97,13 +97,70 @@
             <div>Total Price: <strong id="totalPriceDisplay">₹0</strong></div>
           </div>
           <div class="action-buttons">
+            <button id="holdAndPayBtn" class="btn warning-btn" disabled>
+              💳 Hold Seats (Proceed to Pay)
+            </button>
             <button id="bookSeatsBtn" class="btn success-btn" disabled>
-              ⚡ Reserve Selected Seats
+              ⚡ Direct Reserve
             </button>
             <button id="stormSeatBtn" class="btn storm-btn" title="Simulates 50 parallel requests from 50 distinct users competing for this seat">
               🔥 Storm Contention (50 Users)
             </button>
+            <button id="triggerSweeperBtn" class="btn outline-btn" title="Triggers HoldSweeper to immediately reclaim expired holds">
+              🧹 Run Sweeper
+            </button>
           </div>
+        </div>
+      </section>
+
+      <!-- Interactive Payment Simulation Checkout Modal / Card -->
+      <section id="paymentSimulatorCard" class="card payment-simulator-card hidden">
+        <div class="simulator-header">
+          <div class="sim-badge-row">
+            <span class="paytm-checkout-badge">💳 Paytm Checkout Simulation</span>
+            <span class="hold-timer-pill" id="simTimerPill">⏳ Hold active: 30s remaining</span>
+          </div>
+          <button id="simDismissBtn" class="close-icon-btn" title="Dismiss modal">&times;</button>
+        </div>
+
+        <div class="sim-content">
+          <div class="sim-summary-box">
+            <div class="sim-item">
+              <span class="sim-label">Reservation ID</span>
+              <code class="code-pill" id="simReservationId">--</code>
+            </div>
+            <div class="sim-item">
+              <span class="sim-label">Selected Seats</span>
+              <span class="sim-seats-value" id="simSeatsDisplay">--</span>
+            </div>
+            <div class="sim-item">
+              <span class="sim-label">Total Due</span>
+              <span class="sim-amount-value" id="simAmountDisplay">₹0</span>
+            </div>
+            <div class="sim-item">
+              <span class="sim-label">Seat State</span>
+              <span class="tag-warning" id="simStateTag">HELD (LOCKED)</span>
+            </div>
+          </div>
+
+          <div class="sim-timer-progress">
+            <div class="sim-timer-bar" id="simTimerBar"></div>
+          </div>
+
+          <div class="sim-instruction-text" id="simInstructionText">
+            Seats are currently <strong>HELD</strong> exclusively for your user identity (highlighted yellow). Test payment outcomes:
+          </div>
+
+          <div class="sim-button-group">
+            <button id="simSuccessBtn" class="btn success-btn-lg">
+              ✅ Simulate Payment SUCCESS (Confirm & Issue Ticket)
+            </button>
+            <button id="simFailureBtn" class="btn danger-btn-lg">
+              ❌ Simulate Payment FAILURE (Keep Held until Swept)
+            </button>
+          </div>
+
+          <div id="simFeedbackBox" class="sim-feedback-box hidden"></div>
         </div>
       </section>
 

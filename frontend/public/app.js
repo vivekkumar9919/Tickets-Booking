@@ -23,11 +23,27 @@ class UnifiedDashboard {
     this.seatGridContainer = document.getElementById('seatGridContainer');
     this.selectedSeatsList = document.getElementById('selectedSeatsList');
     this.totalPriceDisplay = document.getElementById('totalPriceDisplay');
+    this.holdAndPayBtn = document.getElementById('holdAndPayBtn');
     this.bookSeatsBtn = document.getElementById('bookSeatsBtn');
     this.stormSeatBtn = document.getElementById('stormSeatBtn');
+    this.triggerSweeperBtn = document.getElementById('triggerSweeperBtn');
     this.bookingAlertBox = document.getElementById('bookingAlertBox');
     this.userBookingsTableBody = document.getElementById('userBookingsTableBody');
     this.userReservationsCount = document.getElementById('userReservationsCount');
+
+    // Payment Simulator Elements
+    this.paymentSimulatorCard = document.getElementById('paymentSimulatorCard');
+    this.simDismissBtn = document.getElementById('simDismissBtn');
+    this.simTimerPill = document.getElementById('simTimerPill');
+    this.simTimerBar = document.getElementById('simTimerBar');
+    this.simReservationId = document.getElementById('simReservationId');
+    this.simSeatsDisplay = document.getElementById('simSeatsDisplay');
+    this.simAmountDisplay = document.getElementById('simAmountDisplay');
+    this.simStateTag = document.getElementById('simStateTag');
+    this.simInstructionText = document.getElementById('simInstructionText');
+    this.simSuccessBtn = document.getElementById('simSuccessBtn');
+    this.simFailureBtn = document.getElementById('simFailureBtn');
+    this.simFeedbackBox = document.getElementById('simFeedbackBox');
 
     // Observability Elements
     this.overallBadge = document.getElementById('overallStatusBadge');
@@ -52,6 +68,8 @@ class UnifiedDashboard {
     this.userReservations = [];
     this.auditLogs = [];
     this.probeTimer = null;
+    this.activeHold = null;
+    this.holdIntervalTimer = null;
 
     this.init();
   }
@@ -87,8 +105,14 @@ class UnifiedDashboard {
       this.renderSeats();
     });
 
+    this.holdAndPayBtn.addEventListener('click', () => this.holdSelectedSeats());
     this.bookSeatsBtn.addEventListener('click', () => this.reserveSelectedSeats());
     this.stormSeatBtn.addEventListener('click', () => this.stormHotSeat());
+    this.triggerSweeperBtn.addEventListener('click', () => this.triggerSweeper());
+
+    this.simDismissBtn.addEventListener('click', () => this.dismissPaymentSimulator());
+    this.simSuccessBtn.addEventListener('click', () => this.simulatePaymentSuccess());
+    this.simFailureBtn.addEventListener('click', () => this.simulatePaymentFailure());
   }
 
   switchTab(tab) {
@@ -273,6 +297,7 @@ class UnifiedDashboard {
       this.selectedSeatsList.textContent = 'None';
       this.totalPriceDisplay.textContent = '₹0';
       this.bookSeatsBtn.disabled = true;
+      this.holdAndPayBtn.disabled = true;
       this.stormSeatBtn.disabled = true;
     } else {
       const list = Array.from(this.selectedSeats).sort().join(', ');
@@ -280,7 +305,215 @@ class UnifiedDashboard {
       this.selectedSeatsList.textContent = list;
       this.totalPriceDisplay.textContent = `₹${(count * pricePerSeat).toLocaleString('en-IN')}`;
       this.bookSeatsBtn.disabled = false;
+      this.holdAndPayBtn.disabled = false;
       this.stormSeatBtn.disabled = false;
+    }
+  }
+
+  async holdSelectedSeats() {
+    if (this.selectedSeats.size === 0 || !this.currentShow) return;
+
+    const base = this.getBaseUrl();
+    const seats = Array.from(this.selectedSeats).sort();
+    const userId = this.userTokenInput.value.trim() || 'usr_buyer_alice';
+    const holdDurationSeconds = 30; // 30-second hold for clear demonstration
+
+    this.holdAndPayBtn.disabled = true;
+    this.holdAndPayBtn.textContent = 'Holding Seats...';
+
+    try {
+      const res = await fetch(`${base}/shows/${this.currentShow.id}/hold`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userId}`,
+        },
+        body: JSON.stringify({ seats, hold_duration_seconds: holdDurationSeconds }),
+      });
+
+      const data = await res.json();
+      if (res.status === 201) {
+        this.showAlert(`Seats ${seats.join(', ')} placed on 30s HOLD. Proceed with payment below!`, 'info');
+        this.selectedSeats.clear();
+        this.renderSelectedSummary();
+        await this.fetchShowState(this.currentShow.id);
+
+        this.openPaymentSimulator({
+          reservationId: data.reservation_id,
+          showId: data.show_id,
+          seats: data.seats,
+          amountPaise: data.amount_paise,
+          userId,
+          holdExpiresAt: new Date(data.hold_expires_at),
+          durationSeconds: holdDurationSeconds,
+        });
+      } else {
+        this.showAlert(`❌ Hold Declined (${res.status}): ${data.message || data.error}`, 'error');
+        await this.fetchShowState(this.currentShow.id);
+      }
+    } catch (err) {
+      this.showAlert(`Network error: ${err.message}`, 'error');
+    } finally {
+      this.holdAndPayBtn.textContent = '💳 Hold Seats (Proceed to Pay)';
+      this.renderSelectedSummary();
+    }
+  }
+
+  openPaymentSimulator(holdData) {
+    this.activeHold = holdData;
+    this.simReservationId.textContent = holdData.reservationId.substring(0, 13) + '...';
+    this.simSeatsDisplay.textContent = holdData.seats.join(', ');
+    this.simAmountDisplay.textContent = `₹${(holdData.amountPaise / 100).toLocaleString('en-IN')}`;
+    this.simStateTag.textContent = 'HELD (LOCKED)';
+    this.simStateTag.className = 'tag-warning';
+    this.simInstructionText.innerHTML = `Seats <strong>${holdData.seats.join(', ')}</strong> are held exclusively for identity <code>${holdData.userId}</code>. Select an outcome to simulate gateway callback:`;
+
+    this.simSuccessBtn.disabled = false;
+    this.simFailureBtn.disabled = false;
+    this.simFeedbackBox.className = 'sim-feedback-box hidden';
+    this.simFeedbackBox.innerHTML = '';
+    this.paymentSimulatorCard.classList.remove('hidden');
+
+    this.startHoldCountdown();
+  }
+
+  startHoldCountdown() {
+    if (this.holdIntervalTimer) {
+      clearInterval(this.holdIntervalTimer);
+      this.holdIntervalTimer = null;
+    }
+
+    const updateTimer = async () => {
+      if (!this.activeHold) {
+        clearInterval(this.holdIntervalTimer);
+        return;
+      }
+
+      const diffMs = this.activeHold.holdExpiresAt - new Date();
+      const secondsLeft = Math.max(0, Math.ceil(diffMs / 1000));
+      const percent = Math.min(100, Math.max(0, (secondsLeft / this.activeHold.durationSeconds) * 100));
+
+      this.simTimerPill.textContent = `⏳ Hold active: ${secondsLeft}s remaining`;
+      this.simTimerBar.style.width = `${percent}%`;
+
+      if (secondsLeft <= 0) {
+        clearInterval(this.holdIntervalTimer);
+        this.holdIntervalTimer = null;
+        this.simTimerPill.textContent = '⏱️ Hold Expired';
+        this.simStateTag.textContent = 'HOLD EXPIRED';
+        this.simStateTag.className = 'tag-warning';
+        this.simSuccessBtn.disabled = true;
+        this.simFailureBtn.disabled = true;
+
+        this.showSimFeedback('🧹 Hold window expired (30s)! Triggering HoldSweeper to reclaim seats to Available...', 'info');
+
+        // Automatically trigger sweeper and refresh show state to show seats turn green (available)
+        await this.triggerSweeper(true);
+        if (this.currentShow) await this.fetchShowState(this.currentShow.id);
+      }
+    };
+
+    updateTimer();
+    this.holdIntervalTimer = setInterval(updateTimer, 1000);
+  }
+
+  async simulatePaymentSuccess() {
+    if (!this.activeHold) return;
+    const base = this.getBaseUrl();
+    const { reservationId, seats, amountPaise, userId, showId } = this.activeHold;
+
+    this.simSuccessBtn.disabled = true;
+    this.simFailureBtn.disabled = true;
+    this.simSuccessBtn.textContent = 'Processing Payment...';
+
+    try {
+      const res = await fetch(`${base}/reservations/${reservationId}/confirm`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userId}`,
+        },
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        if (this.holdIntervalTimer) clearInterval(this.holdIntervalTimer);
+        this.simStateTag.textContent = 'CONFIRMED (SOLD)';
+        this.simStateTag.className = 'tag-success';
+        this.simTimerPill.textContent = '✅ Payment Completed';
+        this.simTimerBar.style.width = '100%';
+        this.simTimerBar.style.background = 'var(--success)';
+
+        this.showSimFeedback(`🎉 Payment successful! Seats ${seats.join(', ')} confirmed and tickets issued to ${userId}.`, 'success');
+
+        this.userReservations.unshift({
+          id: reservationId,
+          seats,
+          amount: amountPaise,
+          userId,
+        });
+        this.renderUserReservations();
+        await this.fetchShowState(showId);
+
+        setTimeout(() => {
+          this.dismissPaymentSimulator();
+        }, 4000);
+      } else {
+        this.showSimFeedback(`Payment confirmation declined (${res.status}): ${data.message || data.error}`, 'error');
+        await this.fetchShowState(showId);
+      }
+    } catch (err) {
+      this.showSimFeedback(`Payment error: ${err.message}`, 'error');
+    } finally {
+      this.simSuccessBtn.textContent = '✅ Simulate Payment SUCCESS (Confirm & Issue Ticket)';
+    }
+  }
+
+  async simulatePaymentFailure() {
+    if (!this.activeHold) return;
+    const { seats, holdExpiresAt } = this.activeHold;
+
+    this.simSuccessBtn.disabled = true;
+    this.simFailureBtn.disabled = true;
+    this.simStateTag.textContent = 'HELD (PAYMENT FAILED)';
+    this.simStateTag.className = 'tag-warning';
+
+    const diffMs = holdExpiresAt - new Date();
+    const secondsLeft = Math.max(0, Math.ceil(diffMs / 1000));
+
+    this.showSimFeedback(
+      `❌ Payment Failed / Cancelled by Buyer! Seats <strong>${seats.join(', ')}</strong> remain locked in <strong>HELD (Yellow)</strong> state for the remaining ${secondsLeft}s. Once the timer expires, the background <strong>HoldSweeper</strong> will automatically reclaim them back to <strong>AVAILABLE (Green)</strong>.`,
+      'error'
+    );
+  }
+
+  dismissPaymentSimulator() {
+    if (this.holdIntervalTimer) {
+      clearInterval(this.holdIntervalTimer);
+      this.holdIntervalTimer = null;
+    }
+    this.activeHold = null;
+    this.paymentSimulatorCard.classList.add('hidden');
+  }
+
+  showSimFeedback(message, type = 'info') {
+    this.simFeedbackBox.className = `sim-feedback-box ${type}`;
+    this.simFeedbackBox.innerHTML = message;
+    this.simFeedbackBox.classList.remove('hidden');
+  }
+
+  async triggerSweeper(silent = false) {
+    const base = this.getBaseUrl();
+    try {
+      const res = await fetch(`${base}/admin/sweep`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        if (!silent) {
+          this.showAlert(`🧹 HoldSweeper ran: Reclaimed ${data.reclaimed_count} expired held seats back to Available!`, 'info');
+        }
+        if (this.currentShow) await this.fetchShowState(this.currentShow.id);
+      }
+    } catch (err) {
+      if (!silent) this.showAlert(`Sweeper trigger error: ${err.message}`, 'error');
     }
   }
 

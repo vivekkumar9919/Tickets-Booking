@@ -227,4 +227,64 @@ describe('Phase 4: API Layer, Middlewares, Token Auth & Observability', () => {
     assert.equal(state.summary.available, 10);
     assert.equal(state.summary.confirmed, 0);
   });
+
+  it('POST /shows/:id/hold and POST /reservations/:id/confirm should handle temporary holds and payment confirmation', async () => {
+    const showRes = await fetch(`${baseUrl}/shows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `HoldShow ${uid()}`, total_seats: 10, price_paise: 150000 }),
+    });
+    const show = await showRes.json();
+
+    const buyerId = `usr_holder_${uid()}`;
+    const holdRes = await fetch(`${baseUrl}/shows/${show.id}/hold`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${buyerId}`,
+      },
+      body: JSON.stringify({ seats: ['S1', 'S2'], hold_duration_seconds: 60 }),
+    });
+
+    assert.equal(holdRes.status, 201);
+    const holdBody = await holdRes.json();
+    assert.equal(holdBody.status, 'held');
+    assert.deepEqual(holdBody.seats, ['S1', 'S2']);
+    assert.ok(holdBody.reservation_id);
+
+    // Show state reflects seats in held
+    const stateRes = await fetch(`${baseUrl}/shows/${show.id}`);
+    const state = await stateRes.json();
+    assert.equal(state.summary.held, 2);
+    assert.equal(state.summary.available, 8);
+
+    // Another buyer cannot hold or reserve the same seats
+    const conflictRes = await fetch(`${baseUrl}/shows/${show.id}/hold`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer usr_other_${uid()}`,
+      },
+      body: JSON.stringify({ seats: ['S1'] }),
+    });
+    assert.equal(conflictRes.status, 409);
+
+    // Confirm reservation with payment simulation
+    const confirmRes = await fetch(`${baseUrl}/reservations/${holdBody.reservation_id}/confirm`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${buyerId}`,
+      },
+    });
+    assert.equal(confirmRes.status, 200);
+    const confirmBody = await confirmRes.json();
+    assert.equal(confirmBody.status, 'confirmed');
+
+    // Show state reflects confirmed seats
+    const finalStateRes = await fetch(`${baseUrl}/shows/${show.id}`);
+    const finalState = await finalStateRes.json();
+    assert.equal(finalState.summary.held, 0);
+    assert.equal(finalState.summary.confirmed, 2);
+    assert.equal(finalState.summary.available, 8);
+  });
 });
