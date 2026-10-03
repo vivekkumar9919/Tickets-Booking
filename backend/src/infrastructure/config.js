@@ -14,7 +14,7 @@ export const config = Object.freeze({
     poolMin: parseInt(process.env.DB_POOL_MIN || '5', 10),
     poolMax: parseInt(process.env.DB_POOL_MAX || '30', 10),
     idleTimeoutMs: parseInt(process.env.DB_IDLE_TIMEOUT_MS || '30000', 10),
-    connectionTimeoutMs: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '5000', 10),
+    connectionTimeoutMs: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '10000', 10),
     lockTimeoutMs: parseInt(process.env.DB_LOCK_TIMEOUT_MS || '2000', 10),
   }),
 

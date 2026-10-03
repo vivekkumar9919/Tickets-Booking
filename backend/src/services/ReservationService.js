@@ -138,14 +138,28 @@ export class ReservationService {
   }
 
   _handleDatabaseError(err, correlationId) {
+    if (err instanceof DomainError) {
+      throw err;
+    }
+
     logger.error('Reservation error occurred', {
       correlation_id: correlationId,
       pg_code: err.code,
       error_message: err.message,
     });
 
-    if (err.code === '55P03') {
-      throw new DomainError('Seat lock timeout under high contention', 'SEAT_LOCK_TIMEOUT', 409);
+    if (
+      err.code === '55P03' ||
+      err.code === '57014' ||
+      err.code === '53300' ||
+      (err.message && (
+        err.message.includes('timeout exceeded') ||
+        err.message.includes('Connection terminated') ||
+        err.message.includes('Connection timeout') ||
+        err.message.includes('canceling statement')
+      ))
+    ) {
+      throw new DomainError('Seat lock or pool timeout under high contention, please retry', 'SEAT_LOCK_TIMEOUT', 409);
     }
     if (err.code === '23505') {
       if (err.constraint && err.constraint.includes('idempotency')) {
