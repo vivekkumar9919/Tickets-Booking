@@ -3,7 +3,7 @@
 # Paytm Money Take-Home Assignment: High-Concurrency Burst Load Runner
 # Usage: ./burst.sh [BASE_URL]
 # Example: ./burst.sh http://localhost:4000
-#          ./burst.sh http://localhost:8085/api
+#          ./burst.sh https://ticket-backend.up.railway.app
 # ==============================================================================
 
 set -euo pipefail

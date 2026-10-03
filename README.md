@@ -71,25 +71,24 @@ Clone the repository and run:
 docker compose up -d --build
 ```
 
-This launches 3 containerized services:
+This launches the containerized services:
 - **`ticket_postgres`**: PostgreSQL 15 on port `5432` with healthcheck (`pg_isready`).
 - **`ticket_backend`**: Node.js Express service on host port `4000` (container port `3000`).
-- **`ticket_frontend`**: Nginx Alpine observability dashboard on host port `8085` (container port `80`), reverse-proxying `/api/` to `backend:3000`.
 
 ### 3.2 Verify Service Health
 
 ```bash
-# Direct Backend Health Check
+# Liveness Probe (Checks process responsiveness)
+curl -s http://localhost:4000/livez
+# {"status":"alive","timestamp":"2026-10-03T06:39:27.708Z"}
+
+# Readiness Probe (Deep DB ping SELECT 1; fails closed if DB unreachable)
 curl -s http://localhost:4000/readyz
-# {"status":"ready","database":"connected","latency_ms":8,"timestamp":"2026-10-02T18:45:15.102Z"}
+# {"status":"ready","database":"connected","latency_ms":1,"timestamp":"2026-10-03T06:39:27.810Z"}
 
-# Via Frontend Reverse Proxy
-curl -s http://localhost:8085/api/livez
-# {"status":"alive","timestamp":"2026-10-02T18:45:15.137Z"}
+# Prometheus Metrics
+curl -s http://localhost:4000/metrics
 ```
-
-Open the Live Observability Dashboard in your browser:  
-👉 **`http://localhost:8085`**
 
 ---
 

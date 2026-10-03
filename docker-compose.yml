@@ -42,17 +42,5 @@ services:
       retries: 3
       start_period: 5s
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: ticket_frontend
-    restart: always
-    ports:
-      - "8085:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-
 volumes:
   pgdata:
