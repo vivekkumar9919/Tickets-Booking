@@ -5,6 +5,8 @@ import { SeatRepository } from '../repositories/SeatRepository.js';
 import { Show } from '../domain/Show.js';
 import { Money } from '../domain/Money.js';
 import { ShowNotFoundError, DomainError } from '../domain/errors.js';
+import { DEFAULT_PER_USER_LIMIT } from '../domain/constants.js';
+import config from '../infrastructure/config.js';
 import logger from '../infrastructure/logger/Logger.js';
 
 export class ShowService {
@@ -14,7 +16,14 @@ export class ShowService {
     this.seatRepo = new SeatRepository(pool);
   }
 
-  async createShow({ name, totalSeats, seatNumbers = null, pricePaise, perUserLimit = 4, correlationId = null }) {
+  async createShow({
+    name,
+    totalSeats,
+    seatNumbers = null,
+    pricePaise,
+    perUserLimit = config.booking.defaultPerUserLimit || DEFAULT_PER_USER_LIMIT,
+    correlationId = null,
+  }) {
     if (!name || typeof name !== 'string' || !name.trim()) {
       throw new DomainError('Show name is required', 'INVALID_SHOW_NAME', 400);
     }
@@ -53,6 +62,7 @@ export class ShowService {
 
       return {
         ...show.toJSON(),
+        totalSeats: show.totalSeats,
         seats: createdSeats.map((s) => ({ seat_number: s.seatNumber, status: s.status })),
       };
     });

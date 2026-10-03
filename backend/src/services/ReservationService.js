@@ -167,7 +167,7 @@ export class ReservationService {
       }
       throw new SeatUnavailableError();
     }
-    if (err.code === '40001') {
+    if (err.code === '40001' || err.code === '40P01') {
       throw new DomainError('Concurrent serialization conflict, please retry', 'CONCURRENCY_CONFLICT', 409);
     }
     throw err;

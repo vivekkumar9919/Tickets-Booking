@@ -11,16 +11,19 @@ export function errorHandler(err, req, res, _next) {
     err.code === '55P03' ||
     err.code === '57014' ||
     err.code === '53300' ||
+    err.code === '40P01' ||
+    err.code === '40001' ||
     (err.message && (
       err.message.includes('timeout exceeded') ||
       err.message.includes('Connection terminated') ||
       err.message.includes('Connection timeout') ||
-      err.message.includes('canceling statement')
+      err.message.includes('canceling statement') ||
+      err.message.includes('deadlock detected')
     ))
   ) {
     statusCode = 409;
-    errorCode = 'SEAT_LOCK_TIMEOUT';
-    errorMessage = 'Seat lock or database pool timeout under peak contention, please retry';
+    errorCode = err.code === '40P01' || err.code === '40001' ? 'CONCURRENCY_CONFLICT' : 'SEAT_LOCK_TIMEOUT';
+    errorMessage = 'High concurrency contention or serialization conflict, please retry';
   }
 
   // Log internal error with correlation_id via Winston (Zero PII)
