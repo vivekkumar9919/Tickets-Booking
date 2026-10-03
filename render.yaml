@@ -25,5 +25,5 @@ services:
 databases:
   - name: ticket-booking-db
     databaseName: ticket_booking
-    user: postgres
+    user: ticket_user
     plan: free
